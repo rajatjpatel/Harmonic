@@ -1,0 +1,156 @@
+// Alt Bat               - Page 101
+// Bat                   - Page  98
+// Crab                  - Page 104
+// Gartley               - Page  92
+// Butterfly             - Page 113
+// Deep Crab             - Page 107
+// Shark                 - Page 119 - 220
+// Point D and Stop Loss - Page 174
+
+//@version=5
+indicator('Table', 'Table', true)
+
+// 0. Inputs
+// 1. Switch
+// 2. Variable
+// 3. Arrays
+// 4. Type
+// 5. Construct
+
+//#region ———————————————————— 0. Inputs
+T0        = 'Small font size recommended for mobile app or multiple layout'
+T1        = 'Untick to hide'
+T2        = 'Tick to hide'
+G0        = 'Titles'
+G1        = 'Harmonic Animals'
+
+i_s_font  = input.string('normal',      'Font size', tooltip = T0, options = ['tiny', 'small',  'normal', 'large', 'huge'])
+i_s_Y     = input.string(   'top', 'Table Position', inline = '0', options = ['top',  'middle', 'bottom'])
+i_s_X     = input.string( 'right',               '', inline = '0', options = ['left', 'center', 'right'])
+i_s_rng   = input.string(  ' to ',     'Range Text',               options = [' to ', ' - ', ' ; '])
+
+i_b_title = input.bool(      true,          'Title', inline = '1', group = G0, tooltip = 'Untick to hide column')
+i_b_no    = input.bool(      true,        'No     ', inline = '2', group = G0)
+i_b_xab   = input.bool(      true,        'Point B', inline = '2', group = G0)
+i_b_abc   = input.bool(      true,      'Point C  ', inline = '2', group = G0)
+i_b_dbc   = input.bool(      true,       'Projection', inline = '3', group = G0)
+i_b_prz   = input.bool(      true,         'PRZ   ', inline = '3', group = G0)
+i_b_sl    = input.bool(      true,      'Stop Loss', inline = '3', group = G0)
+
+i_s_pet   = input.string(  'Both', 'Animal Display', options = ['Text', 'Emoji', 'Both'])
+
+i_b_abat  = input.bool(      true, 'Alt Bat    ', inline = '4', group = G1, tooltip = 'Untick to hide row')
+i_b_bat   = input.bool(      true,   'Bat      ', inline = '4', group = G1)
+i_b_crab  = input.bool(      true,  'Crab      ', inline = '4', group = G1)
+i_b_gart  = input.bool(      true, 'Gartley    ', inline = '5', group = G1)
+i_b_bfly  = input.bool(      true,  'Butterfly ', inline = '5', group = G1)
+i_b_dcrab = input.bool(      true,   'Deep Crab', inline = '5', group = G1)
+i_b_shark = input.bool(      true,       'Shark', inline = '6', group = G1)
+i_i_shark = input.float(    0.886,            '', inline = '6', group = G1, options = [0.886, 1.13])
+//#endregion
+
+//#region ———————————————————— 1. Switch
+[str_ABAT, str_BAT, str_CRAB, str_GART, str_BFLY, str_DCRAB, str_SHARK] = switch i_s_pet
+    //         [    str_ABAT,   str_BAT,  str_CRAB,      str_GART,        str_BFLY,      str_DCRAB,  str_SHARK]
+    'Text'  => ['ALT BAT',    'BAT',     'CRAB',     'GARTLEY',    'BUTTERFLY',     'DEEP CRAB',    'SHARK']
+    'Emoji' => [        '🦇',     '🦇',      '🦀',         '👨',           '🦋',           '🦞',       '🦈']
+    'Both'  => ['ALT BAT 🦇', 'BAT 🦇', 'CRAB 🦀', 'GARTLEY 👨', 'BUTTERFLY 🦋', 'DEEP CRAB 🦞', 'SHARK 🦈']
+sl_shark = switch i_i_shark
+    0.886 => 1.13
+    1.13  => 1.27
+
+//#endregion
+
+//#region ———————————————————— 2. Variable
+var TBL   = table.new(i_s_Y + '_' + i_s_X, 7, 8, border_width = 1)
+//#endregion
+
+//#region ———————————————————— 3. Arrays
+bool_pet   = array.new_bool(7)
+bool_title = array.new_bool(7)
+pet        = array.new_string(7)                           // Pet name
+BXA1       = array.new_float(7), BXA2 = array.new_float(7) // BXA
+CAB1       = array.new_float(7), CAB2 = array.new_float(7) // CAB
+DBC1       = array.new_float(7), DBC2 = array.new_float(7) // DBC
+DXA        = array.new_float(7), ESL  = array.new_float(7) // DXA, SL
+col_bg     = array.from(color.white,       color.white, color.white,         color.white,         color.white,    color.white,           color.white)
+str_title  = array.from(         'NO', 'HARMONIC\nPATTERN',    'B',  'C', 'BC\n(Projection)', 'D = XA\n(PRZ)', 'SL = XA\n(STOP LOSS)')
+
+array.set(bool_pet, 0, i_b_abat),  array.set(bool_title, 0, i_b_title)
+array.set(bool_pet, 1, i_b_bat),   array.set(bool_title, 1, i_b_no)
+array.set(bool_pet, 2, i_b_crab),  array.set(bool_title, 2, i_b_xab)
+array.set(bool_pet, 3, i_b_gart),  array.set(bool_title, 3, i_b_abc)
+array.set(bool_pet, 4, i_b_bfly),  array.set(bool_title, 4, i_b_dbc)
+array.set(bool_pet, 5, i_b_dcrab), array.set(bool_title, 5, i_b_prz)
+array.set(bool_pet, 6, i_b_shark), array.set(bool_title, 6, i_b_sl)
+//#endregion
+
+//#region ———————————————————— 4. Type
+type animal
+    int      index = 0         // Reference number
+    string   name  = 'ALT BAT' // Pet name
+    float B_XA_min = 0.352     // B = XA Min
+    float B_XA_max = 0.380     //        Max
+    float C_AB_min = 0.382     // C = AB Min
+    float C_AB_max = 0.886     //        Max
+    float D_BC_min = 2.000     // D = BC Min
+    float D_BC_max = 3.618     //        Max
+    float D_XA_nom = 1.130     // D = XA
+    float E_SL_nom = 1.270     // SL
+
+harmonicDB(animal spec) =>
+    array.set( pet, spec.index, spec.name)
+    array.set(BXA1, spec.index, spec.B_XA_min)
+    array.set(BXA2, spec.index, spec.B_XA_max)
+    array.set(CAB1, spec.index, spec.C_AB_min)
+    array.set(CAB2, spec.index, spec.C_AB_max)
+    array.set(DBC1, spec.index, spec.D_BC_min)
+    array.set(DBC2, spec.index, spec.D_BC_max)
+    array.set( DXA, spec.index, spec.D_XA_nom)
+    array.set( ESL, spec.index, spec.E_SL_nom)
+
+//                        Animal   BXA1   BXA2   CAB1   CAB2   DBC1   DBC2        DXA        SL
+ABAT  = animal.new(0, str_ABAT,   0.352, 0.380, 0.382, 0.886, 2.000, 3.618,     1.130,    1.270)
+BAT   = animal.new(1, str_BAT,    0.382, 0.550, 0.382, 0.886, 1.618, 2.618,     0.886,    1.130)
+CRAB  = animal.new(2, str_CRAB,   0.551, 0.618, 0.382, 0.886, 2.618, 3.618,     1.618,    2.000)
+GART  = animal.new(3, str_GART,   0.619, 0.648, 0.382, 0.886, 1.130, 1.618,     0.786,    1.000)
+BFLY  = animal.new(4, str_BFLY,   0.755, 0.816, 0.382, 0.886, 1.618, 2.240,     1.270,    1.414)
+DCRAB = animal.new(5, str_DCRAB , 0.886, 0.936, 0.382, 0.886, 2.000, 3.618,     1.618,    2.000)
+SHARK = animal.new(6, str_SHARK , 0.382, 0.618, 1.130, 1.618, 1.618, 2.240, i_i_shark, sl_shark)
+
+harmonicDB(ABAT)
+harmonicDB(BAT)
+harmonicDB(CRAB)
+harmonicDB(GART)
+harmonicDB(BFLY)
+harmonicDB(DCRAB)
+harmonicDB(SHARK)
+//#endregion
+
+//#region ———————————————————— 5. Custom functions
+floatToString( float[] id, int index)               =>   str.tostring(array.get(id,  index), '0.000')
+doubleToString(float[] id1, float[] id2, int index) =>   str.tostring(array.get(id1, index), '0.000') + i_s_rng +
+                                                         str.tostring(array.get(id2, index), '0.000')
+tertiaryColor( float[] id, int index)               =>                array.get(id,  index) >= 1 ? color.rgb(250, 251, 251) : color.rgb(253, 253, 253)
+//#endregion
+
+//#region ———————————————————— 6. Construct
+if barstate.islast
+    for i = 0 to 6
+        if array.get(bool_title, i)
+            table.cell(    TBL, i,     0,      array.get(str_title, i),  text_size = i_s_font, bgcolor = array.get(col_bg, i))
+        if array.get(bool_pet, i)
+            table.cell(    TBL, 1, i + 1,      array.get(pet, i),        text_size = i_s_font, bgcolor = color.white, text_halign = text.align_right)
+            if i_b_no   
+                table.cell(TBL, 0, i + 1,   str.tostring(i + 1),         text_size = i_s_font, bgcolor = color.white)
+            if i_b_xab  
+                table.cell(TBL, 2, i + 1, doubleToString(BXA1, BXA2, i), text_size = i_s_font, bgcolor = tertiaryColor(BXA1, i))
+            if i_b_abc  
+                table.cell(TBL, 3, i + 1, doubleToString(CAB1, CAB2, i), text_size = i_s_font, bgcolor = tertiaryColor(CAB1, i))
+            if i_b_dbc  
+                table.cell(TBL, 4, i + 1, doubleToString(DBC1, DBC2, i), text_size = i_s_font, bgcolor = tertiaryColor(DBC1, i))
+            if i_b_prz  
+                table.cell(TBL, 5, i + 1,  floatToString(DXA, i),        text_size = i_s_font, bgcolor = tertiaryColor(DXA,  i))
+            if i_b_sl   
+                table.cell(TBL, 6, i + 1,  floatToString(ESL, i),        text_size = i_s_font, bgcolor = tertiaryColor(ESL,  i))
+//#endregion
